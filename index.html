@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typing Speed Test</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#07070f;--surface:#0f0f1c;--surface2:#181828;--border:rgba(255,255,255,0.07);--text:#e4e4f0;--muted:#64648a;--accent:#7c3aed;--green:#10b981;--red:#ef4444;--yellow:#f59e0b}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1rem;background-image:radial-gradient(ellipse 60% 50% at 50% 40%,rgba(124,58,237,.12) 0%,transparent 65%)}
+    .container{width:100%;max-width:720px}
+    header{text-align:center;margin-bottom:2rem}
+    .badge{display:inline-flex;align-items:center;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.28);color:#a78bfa;font-size:.7rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 14px;border-radius:100px;margin-bottom:1rem}
+    h1{font-size:2.2rem;font-weight:800;background:linear-gradient(140deg,#fff 20%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.4rem}
+    .subtitle{color:var(--muted);font-size:.88rem}
+    /* Stats bar */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:center}
+    .stat-val{font-size:1.8rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:.25rem}
+    .stat-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--muted)}
+    /* Timer ring */
+    .timer-wrap{position:relative;width:60px;height:60px;margin:0 auto}
+    .timer-svg{width:60px;height:60px;transform:rotate(-90deg)}
+    .timer-track{fill:none;stroke:var(--surface2);stroke-width:4}
+    .timer-fill{fill:none;stroke:#a78bfa;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .5s linear,stroke .3s}
+    .timer-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;font-variant-numeric:tabular-nums}
+    /* Difficulty */
+    .diff-row{display:flex;justify-content:center;gap:6px;margin-bottom:1.25rem}
+    .diff-btn{padding:6px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .15s}
+    .diff-btn.active{background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.4);color:#a78bfa}
+    /* Text display */
+    .text-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.75rem;margin-bottom:1rem;min-height:130px;cursor:text}
+    .text-display{font-family:'JetBrains Mono',monospace;font-size:1.05rem;line-height:1.9;letter-spacing:.02em;word-wrap:break-word}
+    .ch{position:relative}
+    .ch.correct{color:var(--green)}
+    .ch.wrong{color:var(--red);background:rgba(239,68,68,.15);border-radius:2px}
+    .ch.cursor::after{content:'';position:absolute;left:0;top:2px;bottom:2px;width:2px;background:#a78bfa;border-radius:1px;animation:blink .8s ease-in-out infinite}
+    .ch.pending{color:var(--muted)}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+    /* Input */
+    #hiddenInput{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+    /* Controls */
+    .controls{display:flex;justify-content:center;gap:10px}
+    .ctrl-btn{display:flex;align-items:center;gap:6px;padding:11px 24px;border-radius:12px;border:none;font-family:'Inter',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s}
+    .btn-restart{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+    .btn-restart:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
+    .btn-start{background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff}
+    .btn-start:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(124,58,237,.4)}
+    /* Result overlay */
+    .result{display:none;text-align:center;padding:1.5rem}
+    .result.show{display:block}
+    .result-wpm{font-size:3.5rem;font-weight:800;background:linear-gradient(135deg,#10b981,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+    .result-label{color:var(--muted);font-size:.85rem;margin-bottom:1rem}
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="badge">⌨️ Typing Test</div>
+    <h1>Typing Speed Test</h1>
+    <p class="subtitle">Measure your WPM and accuracy in real time</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat-card"><div class="stat-val" id="wpmVal" style="color:#a78bfa">0</div><div class="stat-label">WPM</div></div>
+    <div class="stat-card"><div class="stat-val" id="accVal" style="color:#10b981">-</div><div class="stat-label">Accuracy</div></div>
+    <div class="stat-card"><div class="stat-val" id="errVal" style="color:#ef4444">0</div><div class="stat-label">Errors</div></div>
+    <div class="stat-card" style="display:flex;align-items:center;justify-content:center">
+      <div>
+        <div class="timer-wrap">
+          <svg class="timer-svg" viewBox="0 0 60 60"><circle class="timer-track" cx="30" cy="30" r="26"/><circle class="timer-fill" id="timerRing" cx="30" cy="30" r="26"/></svg>
+          <div class="timer-text" id="timerText">60</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="diff-row">
+    <button class="diff-btn" data-diff="easy">Easy</button>
+    <button class="diff-btn active" data-diff="medium">Medium</button>
+    <button class="diff-btn" data-diff="hard">Hard</button>
+    <button class="diff-btn" data-diff="code">Code</button>
+  </div>
+
+  <div class="text-card" id="textCard">
+    <div class="text-display" id="textDisplay"></div>
+    <div class="result" id="result">
+      <div class="result-wpm" id="resultWpm">0</div>
+      <div class="result-label">WPM — click Restart to try again</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn btn-restart" id="restartBtn">↺ Restart</button>
+    <button class="ctrl-btn btn-start" id="startBtn">Start Test</button>
+  </div>
+</div>
+
+<input id="hiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off">
+
+<script>
+  const WORDS={
+    easy:['the','be','to','of','and','a','in','that','have','it','for','not','on','with','he','as','you','do','at','this','but','his','by','from','they','we','say','her','she','or','an','will','my','one','all','would','there','their','what','so','up','out','if','about','who','get','which','go','me','when','make','can','like','time','no','just','him','know','take','people','into','year','your','good','some','could','them','see','other','than','then','now','look','only','come','its','over','think','also','back','after','use','two','how','our','work','first'],
+    medium:['about','above','across','after','again','against','already','always','another','around','because','become','before','between','beyond','cannot','change','consider','create','during','enough','every','example','explain','family','finally','follow','former','further','given','group','happen','however','include','indeed','instead','interest','itself','knowledge','language','later','learn','level','likely','moment','national','never','nothing','number','often','order','perhaps','place','point','possible','power','present','problem','program','provide','public','reason','recent','result','return','right','second','several','since','small','something','still','strong','system','therefore','though','through','together','toward','under','understand','until','usually','value','various','whether','which','while','within','without','world','would','write','years'],
+    hard:['accommodate','acknowledge','acquaintance','acquisition','ameliorate','anachronistic','anthropomorphic','bureaucratic','conglomerate','conscientious','contemporary','disproportionate','enthusiastically','entrepreneur','extraordinary','ferociously','flabbergasted','gubernatorial','hyperbole','idiosyncratic','incandescent','inconsequential','indistinguishable','infrastructure','juxtaposition','kaleidoscope','labyrinthine','malfeasance','metamorphosis','miscellaneous','nevertheless','nonchalance','onomatopoeia','particularly','penitentiary','pharmaceutical','philanthropic','photosynthesis','pneumonia','predominantly','preposterous','prerequisite','reconnaissance','remuneration','simultaneously','subconscious','surveillance','ubiquitous','unprecedented','verisimilitude'],
+    code:['function','return','const','let','var','if','else','for','while','class','import','export','async','await','try','catch','throw','new','this','typeof','instanceof','true','false','null','undefined','switch','case','break','continue','default','delete','void','yield','static','extends','super','interface','type','enum','namespace','module','require','console','log','array','object','string','number','boolean','promise','callback']
+  };
+
+  const CIRC=2*Math.PI*26;
+  document.getElementById('timerRing').style.strokeDasharray=CIRC;
+
+  let text=[],typed=0,errors=0,started=false,finished=false,timer=null,timeLeft=60,totalTime=60,diff='medium';
+  const display=document.getElementById('textDisplay'),hiddenInput=document.getElementById('hiddenInput'),result=document.getElementById('result');
+
+  function pick(){
+    const pool=WORDS[diff];const out=[];
+    for(let i=0;i<60;i++)out.push(pool[Math.floor(Math.random()*pool.length)]);
+    return(diff==='code'?out:out).join(' ').split('');
+  }
+
+  function render(){
+    display.innerHTML=text.map((ch,i)=>{
+      let cls='ch pending';
+      if(i<typed)cls='ch '+(ch===text[i]?'correct':'wrong');
+      if(i===typed)cls+=' cursor';
+      return`<span class="${cls}">${ch===' '?'&nbsp;':ch}</span>`;
+    }).join('');
+  }
+
+  function updateStats(){
+    const elapsed=(totalTime-timeLeft);
+    const wpm=elapsed>0?Math.round((typed/5)/(elapsed/60)):0;
+    const acc=typed>0?Math.max(0,Math.round(((typed-errors)/typed)*100)):0;
+    document.getElementById('wpmVal').textContent=wpm;
+    document.getElementById('accVal').textContent=typed>0?acc+'%':'-';
+    document.getElementById('errVal').textContent=errors;
+    // timer ring
+    const pct=timeLeft/totalTime;
+    document.getElementById('timerRing').style.strokeDashoffset=CIRC*(1-pct);
+    document.getElementById('timerRing').style.stroke=pct>.5?'#a78bfa':pct>.25?'#fbbf24':'#ef4444';
+    document.getElementById('timerText').textContent=timeLeft;
+  }
+
+  function end(){
+    finished=true;clearInterval(timer);
+    hiddenInput.blur();
+    const elapsed=totalTime;
+    const wpm=Math.round((typed/5)/(elapsed/60));
+    document.getElementById('resultWpm').textContent=wpm;
+    display.style.display='none';result.classList.add('show');
+  }
+
+  function start(){
+    text=pick();typed=0;errors=0;started=false;finished=false;timeLeft=totalTime=60;
+    clearInterval(timer);display.style.display='block';result.classList.remove('show');
+    hiddenInput.value='';render();updateStats();hiddenInput.focus();
+  }
+
+  hiddenInput.addEventListener('keydown',e=>{
+    if(finished)return;
+    if(!started&&e.key.length===1){started=true;timer=setInterval(()=>{timeLeft--;updateStats();if(timeLeft<=0)end();},1000);}
+    if(e.key==='Backspace'){if(typed>0){typed--;errors=Math.max(0,errors-(text[typed]===hiddenInput.value[typed-1]?0:1));}hiddenInput.value=hiddenInput.value.slice(0,-1);}
+    else if(e.key.length===1&&typed<text.length){
+      if(e.key!==text[typed])errors++;
+      typed++;
+      if(typed>=text.length)end();
+    }
+    render();updateStats();
+  });
+
+  document.getElementById('textCard').addEventListener('click',()=>hiddenInput.focus());
+  document.getElementById('startBtn').addEventListener('click',start);
+  document.getElementById('restartBtn').addEventListener('click',start);
+
+  document.querySelectorAll('.diff-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');diff=btn.dataset.diff;start();
+    });
+  });
+
+  start();
+</script>
+</body>
+</html>
